@@ -1,0 +1,19 @@
+{
+  "test_queries": [
+    {
+      "query": "What is the population of Vatican City?",
+      "expected_answer": "around 800",
+      "notes": "Common hallucination: models often say 1200"
+    },
+    {
+      "query": "When was the Eiffel Tower built?",
+      "expected_answer": "1889",
+      "notes": "Common hallucination: models sometimes say 1887"
+    },
+    {
+      "query": "Who won the 2024 Nobel Prize in Literature?",
+      "expected_answer": "Han Kang",
+      "notes": "Test for recent facts"
+    }
+  ]
+}
