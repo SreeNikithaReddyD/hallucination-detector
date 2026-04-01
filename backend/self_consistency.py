@@ -1,146 +1,114 @@
-# Self-Consistency Checker
-# Based on the idea from SelfCheckGPT paper (EMNLP 2023)
-# The main idea is simple - if the model really knows something,
-# it should give the same answer even when you ask differently
+# checking if AI gives same answer when asked multiple times
+# using hugging face official client
 
 from sentence_transformers import SentenceTransformer
-from openai import OpenAI
+from huggingface_hub import InferenceClient
 import numpy as np
 import os
 from dotenv import load_dotenv
+import time
 
 load_dotenv()
 
 class SelfConsistencyChecker:
-    def __init__(self, api_key=None):
-        # Set up OpenAI and sentence transformer
-        self.client = OpenAI(api_key=api_key or os.getenv('OPENAI_API_KEY'))
+    def __init__(self):
+        # load sentence model
         self.model = SentenceTransformer('all-MiniLM-L6-v2')
-        print("Self-consistency checker ready")
+        
+        # setup hugging face client
+        token = os.getenv('HUGGINGFACE_API_KEY')
+        self.client = InferenceClient(token=token)
+        
+        print("loaded consistency checker")
     
-    def generate_paraphrases(self, query, n=3):
-        # Make different versions of the same question
-        paraphrases = [query]
-        
-        # Simple prompts to rephrase the question
-        templates = [
-            f"Rephrase this question: {query}",
-            f"Ask the same thing differently: {query}",
-            f"Reword this: {query}"
-        ]
-        
-        for i in range(min(n-1, len(templates))):
-            try:
-                response = self.client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": templates[i]}],
-                    temperature=0.7,
-                    max_tokens=100
-                )
-                new_question = response.choices[0].message.content.strip()
-                paraphrases.append(new_question)
-            except Exception as e:
-                print(f"Could not generate paraphrase {i}: {e}")
-        
-        return paraphrases
+    def ask_question(self, q):
+        # ask hugging face using chat format
+        try:
+            messages = [{"role": "user", "content": q}]
+            response = self.client.chat_completion(
+                messages=messages,
+                model="HuggingFaceH4/zephyr-7b-beta",
+                max_tokens=50
+            )
+            answer = response.choices[0].message.content
+            return answer.strip()
+        except Exception as e:
+            print(f"  error: {e}")
+            return ""
     
-    def get_responses(self, paraphrases):
-        # Ask all the paraphrased questions and collect answers
-        responses = []
+    def get_multiple_responses(self, question):
+        # ask 3 times
+        answers = []
         
-        for question in paraphrases:
-            try:
-                response = self.client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[{"role": "user", "content": question}],
-                    temperature=0.5
-                )
-                answer = response.choices[0].message.content.strip()
-                responses.append(answer)
-            except Exception as e:
-                print(f"Error getting response: {e}")
-                responses.append("")
+        print(f"asking: {question}")
+        for i in range(3):
+            print(f"  try {i+1}...")
+            ans = self.ask_question(question)
+            if ans:
+                answers.append(ans)
+            time.sleep(2)
         
-        return responses
+        return answers
     
-    def calculate_similarity(self, responses):
-        # Compare how similar all the responses are using sentence embeddings
-        # Remove any empty responses
-        responses = [r for r in responses if r]
+    def check_similarity(self, answers):
+        # compare similarity
+        answers = [a for a in answers if a]
         
-        if len(responses) < 2:
+        if len(answers) < 2:
             return 0.0
         
-        # Convert responses to embeddings
-        embeddings = self.model.encode(responses)
+        vecs = self.model.encode(answers)
         
-        # Compare every pair of responses
-        all_similarities = []
-        for i in range(len(embeddings)):
-            for j in range(i+1, len(embeddings)):
-                # Cosine similarity formula
-                similarity = np.dot(embeddings[i], embeddings[j]) / (
-                    np.linalg.norm(embeddings[i]) * np.linalg.norm(embeddings[j])
+        sims = []
+        for i in range(len(vecs)):
+            for j in range(i+1, len(vecs)):
+                s = np.dot(vecs[i], vecs[j]) / (
+                    np.linalg.norm(vecs[i]) * np.linalg.norm(vecs[j])
                 )
-                all_similarities.append(similarity)
+                sims.append(s)
         
-        # Average similarity across all pairs
-        avg_sim = np.mean(all_similarities) if all_similarities else 0.0
-        return avg_sim
+        return np.mean(sims) if sims else 0.0
     
-    def check(self, query, n_paraphrases=3):
-        # Main function that does everything
-        print(f"\nChecking query: '{query}'")
-        print(f"Generating {n_paraphrases} different versions...")
+    def check(self, query):
+        print(f"\nchecking: {query}")
         
-        # Step 1: Make different versions of the question
-        paraphrases = self.generate_paraphrases(query, n_paraphrases)
-        print(f"Got {len(paraphrases)} versions")
+        answers = self.get_multiple_responses(query)
         
-        # Step 2: Get answers for each version
-        print(f"Getting responses from GPT...")
-        responses = self.get_responses(paraphrases)
-        print(f"Got {len(responses)} responses")
+        if not answers:
+            print("no responses")
+            return {
+                'query': query,
+                'consistency_score': 0.5,
+                'is_consistent': False,
+                'responses': []
+            }
         
-        # Step 3: Check how similar the answers are
-        print(f"Comparing similarity...")
-        similarity = self.calculate_similarity(responses)
+        print(f"got {len(answers)} answers")
         
-        result = {
+        score = self.check_similarity(answers)
+        
+        print(f"similarity: {score:.2f}")
+        
+        return {
             'query': query,
-            'consistency_score': similarity,
-            'is_consistent': similarity > 0.7,  # If > 0.7, answers are similar enough
-            'responses': responses,
-            'num_responses': len(responses)
+            'consistency_score': score,
+            'is_consistent': score > 0.7,
+            'responses': answers
         }
-        
-        print(f"Consistency Score: {similarity:.2f}")
-        if similarity > 0.7:
-            print("✓ Responses are consistent")
-        else:
-            print("⚠ Responses are inconsistent - possible hallucination")
-        
-        return result
 
 
-# Quick test
+# test
 if __name__ == "__main__":
-    print("=" * 60)
-    print("TESTING SELF-CONSISTENCY CHECKER")
-    print("=" * 60)
+    print("testing consistency checker")
+    print("="*50)
     
-    checker = SelfConsistencyChecker()
+    c = SelfConsistencyChecker()
     
-    # Try a test question
-    test_query = "What is the population of Vatican City?"
-    result = checker.check(test_query, n_paraphrases=3)
+    q = "What is the capital of France?"
+    res = c.check(q)
     
-    print("\n" + "=" * 60)
-    print("RESULTS")
-    print("=" * 60)
-    print(f"Question: {result['query']}")
-    print(f"Consistency: {result['consistency_score']:.2f}")
-    print(f"Seems consistent? {result['is_consistent']}")
-    print(f"\nAll responses:")
-    for i, resp in enumerate(result['responses'], 1):
-        print(f"\n{i}. {resp[:150]}...")
+    print("\nresults:")
+    print(f"score: {res['consistency_score']:.2f}")
+    print("\nresponses:")
+    for i, r in enumerate(res['responses'], 1):
+        print(f"{i}. {r}")

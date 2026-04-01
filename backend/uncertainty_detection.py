@@ -1,30 +1,29 @@
-# Uncertainty Detector
-# Looks for words that show the AI is not confident
-# Like when people say "maybe" or "I think" when they're unsure
+# finding words that show AI is unsure
+# like "maybe" or "possibly"
 
 import spacy
 
 class UncertaintyDetector:
     def __init__(self):
-        # Load spacy for text analysis
+        # load spacy
         try:
             self.nlp = spacy.load("en_core_web_sm")
-            print("Uncertainty detector ready")
+            print("loaded uncertainty detector")
         except:
-            print("Error: spaCy model not found")
-            print("Please run: python -m spacy download en_core_web_sm")
+            print("need to install spacy model")
+            print("run: python -m spacy download en_core_web_sm")
             raise
         
-        # Words that show uncertainty
-        self.uncertain_words = [
+        # words that show uncertainty
+        self.words = [
             'maybe', 'possibly', 'perhaps', 'might', 'could',
             'approximately', 'roughly', 'about', 'around',
             'i think', 'i believe', 'probably', 'likely',
-            'seems', 'appears', 'suggests', 'may'
+            'seems', 'appears', 'may'
         ]
     
     def detect(self, text):
-        # Find uncertainty words in the text
+        # find uncertain words
         if not text:
             return {
                 'uncertainty_score': 0.0,
@@ -32,55 +31,48 @@ class UncertaintyDetector:
                 'hedging_count': 0
             }
         
-        text_lower = text.lower()
+        lower = text.lower()
         
-        # Look for each uncertain word
-        found_words = []
-        for word in self.uncertain_words:
-            if word in text_lower:
-                found_words.append(word)
+        # check each word
+        found = []
+        for w in self.words:
+            if w in lower:
+                found.append(w)
         
-        count = len(found_words)
-        
-        # Figure out how many sentences are in the text
+        # count sentences
         doc = self.nlp(text)
-        sentences = list(doc.sents)
-        num_sentences = len(sentences)
+        sents = list(doc.sents)
+        num = len(sents)
         
-        # Calculate uncertainty score
-        # More uncertain words per sentence = higher score
-        if num_sentences == 0:
-            score = 0.0
+        # calculate score
+        if num == 0:
+            s = 0.0
         else:
-            # Divide by 2 so we don't max out too easily
-            score = min(count / (num_sentences * 2), 1.0)
+            s = min(len(found) / (num * 2), 1.0)
         
         return {
-            'uncertainty_score': score,
-            'hedging_words_found': found_words,
-            'hedging_count': count,
-            'num_sentences': num_sentences
+            'uncertainty_score': s,
+            'hedging_words_found': found,
+            'hedging_count': len(found),
+            'num_sentences': num
         }
 
 
-# Test it out
+# test
 if __name__ == "__main__":
-    print("=" * 60)
-    print("TESTING UNCERTAINTY DETECTOR")
-    print("=" * 60)
+    print("testing uncertainty detector")
+    print("="*50)
     
-    detector = UncertaintyDetector()
+    d = UncertaintyDetector()
     
-    # Try different examples
-    examples = [
+    tests = [
         "The Eiffel Tower is 330 meters tall.",
         "Vatican City possibly has around 800 people, I think.",
-        "The population might be approximately 1200 or maybe 800."
+        "It might be approximately 1200 or maybe 800."
     ]
     
-    for i, text in enumerate(examples, 1):
-        print(f"\nExample {i}:")
-        print(f"Text: {text}")
-        result = detector.detect(text)
-        print(f"Uncertainty score: {result['uncertainty_score']:.2f}")
-        print(f"Found these uncertain words: {result['hedging_words_found']}")
+    for i, t in enumerate(tests, 1):
+        print(f"\ntest {i}: {t}")
+        r = d.detect(t)
+        print(f"score: {r['uncertainty_score']:.2f}")
+        print(f"found: {r['hedging_words_found']}")
