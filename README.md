@@ -71,7 +71,7 @@ python test_api.py
    - 🟡 Yellow = medium risk (30-59)
    - 🔴 Red = high risk (60+)
 
----
+Example output : ![ChatGPT Badge Example](chatgpt.png)
 
 ## Troubleshooting
 
