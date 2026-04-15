@@ -67,11 +67,11 @@ def detect():
         message = "high risk"
     
     result = {
-        'risk_score': round(final_score, 1),
+        'risk_score': float(round(final_score, 1)),
         'message': message,
-        'consistency': round(c_res['consistency_score'], 2),
-        'uncertainty': round(u_res['uncertainty_score'], 2),
-        'wikipedia': round(w_res['verification_score'], 2),
+        'consistency': float(round(c_res['consistency_score'], 2)),
+        'uncertainty': float(round(u_res['uncertainty_score'], 2)),
+        'wikipedia': float(round(w_res['verification_score'], 2)),
         'uncertain_words': u_res['hedging_words_found']
     }
     

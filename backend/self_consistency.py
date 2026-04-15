@@ -12,13 +12,9 @@ load_dotenv()
 
 class SelfConsistencyChecker:
     def __init__(self):
-        # load sentence model
         self.model = SentenceTransformer('all-MiniLM-L6-v2')
-        
-        # setup hugging face client
         token = os.getenv('HUGGINGFACE_API_KEY')
-        self.client = InferenceClient(token=token)
-        
+        self.client = InferenceClient(api_key=token)
         print("loaded consistency checker")
     
     def ask_question(self, q):
@@ -27,7 +23,7 @@ class SelfConsistencyChecker:
             messages = [{"role": "user", "content": q}]
             response = self.client.chat_completion(
                 messages=messages,
-                model="HuggingFaceH4/zephyr-7b-beta",
+                model="Qwen/Qwen2.5-72B-Instruct",
                 max_tokens=50
             )
             answer = response.choices[0].message.content
