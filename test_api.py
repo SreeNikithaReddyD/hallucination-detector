@@ -1,7 +1,7 @@
 import requests
 import json
 
-url = "http://localhost:5000/detect"
+url = "http://localhost:5001/detect"
 
 data = {
     "query": "What is the capital of France?",

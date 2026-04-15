@@ -1,0 +1,14 @@
+.hallucination-badge {
+  animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.hallucination-badge:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+  transition: all 0.2s;
+}

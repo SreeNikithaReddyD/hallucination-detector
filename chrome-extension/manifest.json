@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Hallucination Detector",
+  "version": "1.0",
+  "description": "Detects hallucinations in ChatGPT and Claude responses",
+  "permissions": ["activeTab"],
+  "host_permissions": [
+    "https://chat.openai.com/*",
+    "https://chatgpt.com/*",
+    "https://claude.ai/*",
+    "http://localhost/*",
+    "http://127.0.0.1/*"
+  ],
+  "content_scripts": [{
+    "matches": [
+      "https://chat.openai.com/*",
+      "https://chatgpt.com/*",
+      "https://claude.ai/*"
+    ],
+    "js": ["content.js"],
+    "css": ["styles.css"]
+  }]
+}
